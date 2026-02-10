@@ -27,7 +27,6 @@ const { filterGroups } = Astro.props;
       </svg>
       Filter
     </button>
-    <a class="filter-clear" href="#" role="button">Clear</a>
   </div>
   <div id="filter-chips" class="filter-chips">
     {filterGroups.map((group) => (
@@ -45,6 +44,7 @@ const { filterGroups } = Astro.props;
         ))}
       </div>
     ))}
+    <a class="filter-clear" href="#" role="button">Clear</a>
   </div>
 </div>
 
@@ -194,7 +194,6 @@ const { filterGroups } = Astro.props;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 0.75rem;
   }
 
   .filter-toggle {
@@ -219,6 +218,7 @@ const { filterGroups } = Astro.props;
 
   .filter-clear {
     display: none;
+    align-items: center;
     color: var(--color-text-muted);
     font-size: 0.8125rem;
     text-decoration: none;
@@ -230,7 +230,7 @@ const { filterGroups } = Astro.props;
   }
 
   .filter-clear.visible {
-    display: inline;
+    display: inline-flex;
   }
 
   .filter-chips {
@@ -263,8 +263,7 @@ const { filterGroups } = Astro.props;
   }
 
   .filter-chip.active {
-    background: var(--color-text);
-    color: var(--color-bg);
+    background: color-mix(in srgb, var(--color-text) 12%, transparent);
     border-color: var(--color-text);
   }
 
@@ -275,16 +274,16 @@ const { filterGroups } = Astro.props;
     border-radius: 2px;
   }
 
-  .filter-chip.active .chip-logo {
-    filter: invert(1);
-  }
-
   .chip-count {
     opacity: 0.5;
     font-size: 0.75rem;
   }
 
   @media (max-width: 768px) {
+    .filter-bar-header {
+      margin-bottom: 0.75rem;
+    }
+
     .filter-toggle {
       display: inline-flex;
     }
