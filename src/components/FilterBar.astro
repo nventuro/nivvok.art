@@ -1,0 +1,309 @@
+---
+interface FilterChip {
+  type: 'manufacturer' | 'faction';
+  value: string;
+  manufacturer: string;
+  count: number;
+  logoSrc: string;
+}
+
+interface FilterGroup {
+  manufacturer: string;
+  chips: FilterChip[];
+}
+
+interface Props {
+  filterGroups: FilterGroup[];
+}
+
+const { filterGroups } = Astro.props;
+---
+
+<div class="filter-bar">
+  <div class="filter-bar-header">
+    <button class="filter-toggle" aria-expanded="false" aria-controls="filter-chips">
+      <svg class="funnel-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1.5 1.5h13l-5 6v5l-3 2v-7z" />
+      </svg>
+      Filter
+    </button>
+    <a class="filter-clear" href="#" role="button">Clear</a>
+  </div>
+  <div id="filter-chips" class="filter-chips">
+    {filterGroups.map((group) => (
+      <div class="filter-group">
+        {group.chips.map((chip) => (
+          <button
+            class="filter-chip"
+            data-filter-type={chip.type}
+            data-filter-value={chip.value}
+          >
+            <img class="chip-logo" src={chip.logoSrc} alt="" width="18" height="18" />
+            <span class="chip-label">{chip.value}</span>
+            <span class="chip-count">{chip.count}</span>
+          </button>
+        ))}
+      </div>
+    ))}
+  </div>
+</div>
+
+<script>
+  const activeFilters = new Set<string>();
+
+  function makeKey(type: string, value: string): string {
+    return `${type}:${value}`;
+  }
+
+  function applyFilters() {
+    const gallery = document.getElementById('gallery');
+    if (!gallery) return;
+
+    const items = gallery.querySelectorAll('.miniature-item');
+    const chips = document.querySelectorAll('.filter-chip');
+    const clearBtn = document.querySelector('.filter-clear') as HTMLElement;
+    const noResults = gallery.querySelector('.no-results') as HTMLElement;
+
+    const selectedManufacturers = new Set<string>();
+    const selectedFactions = new Set<string>();
+
+    activeFilters.forEach((key) => {
+      const [type, ...rest] = key.split(':');
+      const value = rest.join(':');
+      if (type === 'manufacturer') selectedManufacturers.add(value);
+      if (type === 'faction') selectedFactions.add(value);
+    });
+
+    const hasFilters = activeFilters.size > 0;
+    let visibleCount = 0;
+
+    items.forEach((el) => {
+      const item = el as HTMLElement;
+      const manufacturer = item.dataset.manufacturer || '';
+      const faction = item.dataset.faction || '';
+
+      const shouldShow = !hasFilters ||
+        selectedManufacturers.has(manufacturer) ||
+        (faction && selectedFactions.has(faction));
+
+      const isCurrentlyHidden = item.classList.contains('filtered-out') || item.classList.contains('filtering-out');
+
+      if (shouldShow) {
+        visibleCount++;
+        if (isCurrentlyHidden) {
+          item.classList.remove('filtered-out', 'filtering-out');
+          item.classList.add('filtering-in');
+          setTimeout(() => item.classList.remove('filtering-in'), 300);
+        }
+      } else {
+        if (!isCurrentlyHidden) {
+          item.classList.add('filtering-out');
+          setTimeout(() => {
+            if (item.classList.contains('filtering-out')) {
+              item.classList.remove('filtering-out');
+              item.classList.add('filtered-out');
+            }
+          }, 300);
+        }
+      }
+    });
+
+    // Update chip active states
+    chips.forEach((chip) => {
+      const btn = chip as HTMLElement;
+      const key = makeKey(btn.dataset.filterType!, btn.dataset.filterValue!);
+      btn.classList.toggle('active', activeFilters.has(key));
+    });
+
+    // Show/hide clear button
+    if (clearBtn) {
+      clearBtn.classList.toggle('visible', hasFilters);
+    }
+
+    // Empty state
+    if (noResults) {
+      noResults.classList.toggle('visible', hasFilters && visibleCount === 0);
+    }
+
+    // Update URL
+    const params = new URLSearchParams();
+    selectedManufacturers.forEach((m) => params.append('manufacturer', m));
+    selectedFactions.forEach((f) => params.append('faction', f));
+    const qs = params.toString();
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    history.replaceState(null, '', newUrl);
+  }
+
+  // Chip click handler via event delegation
+  const chipsContainer = document.getElementById('filter-chips');
+  if (chipsContainer) {
+    chipsContainer.addEventListener('click', (e) => {
+      const chip = (e.target as HTMLElement).closest('.filter-chip') as HTMLElement;
+      if (!chip) return;
+
+      const key = makeKey(chip.dataset.filterType!, chip.dataset.filterValue!);
+      if (activeFilters.has(key)) {
+        activeFilters.delete(key);
+      } else {
+        activeFilters.add(key);
+      }
+      applyFilters();
+    });
+  }
+
+  // Clear button
+  const clearBtn = document.querySelector('.filter-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      activeFilters.clear();
+      applyFilters();
+    });
+  }
+
+  // Mobile toggle
+  const toggleBtn = document.querySelector('.filter-toggle');
+  if (toggleBtn && chipsContainer) {
+    toggleBtn.addEventListener('click', () => {
+      const expanded = chipsContainer.classList.toggle('expanded');
+      toggleBtn.setAttribute('aria-expanded', String(expanded));
+    });
+  }
+
+  // Init from URL
+  const params = new URLSearchParams(window.location.search);
+  params.getAll('manufacturer').forEach((m) => activeFilters.add(makeKey('manufacturer', m)));
+  params.getAll('faction').forEach((f) => activeFilters.add(makeKey('faction', f)));
+
+  if (activeFilters.size > 0) {
+    applyFilters();
+    // Auto-expand mobile panel if filters are active
+    if (chipsContainer && toggleBtn) {
+      chipsContainer.classList.add('expanded');
+      toggleBtn.setAttribute('aria-expanded', 'true');
+    }
+  }
+</script>
+
+<style>
+  .filter-bar {
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-bar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .filter-toggle {
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: border-color 0.3s, color 0.3s;
+  }
+
+  .funnel-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .filter-clear {
+    display: none;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .filter-clear:hover {
+    color: var(--color-text);
+  }
+
+  .filter-clear.visible {
+    display: inline;
+  }
+
+  .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-group {
+    display: contents;
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: background 0.2s, color 0.2s, border-color 0.3s;
+    white-space: nowrap;
+  }
+
+  .filter-chip:hover {
+    border-color: var(--color-text-muted);
+  }
+
+  .filter-chip.active {
+    background: var(--color-text);
+    color: var(--color-bg);
+    border-color: var(--color-text);
+  }
+
+  .chip-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    border-radius: 2px;
+  }
+
+  .filter-chip.active .chip-logo {
+    filter: invert(1);
+  }
+
+  .chip-count {
+    opacity: 0.5;
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 768px) {
+    .filter-toggle {
+      display: inline-flex;
+    }
+
+    .filter-chips {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .filter-chips.expanded {
+      max-height: 500px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      width: 100%;
+    }
+  }
+</style>

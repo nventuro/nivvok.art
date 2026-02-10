@@ -3,10 +3,10 @@ import { getImage } from 'astro:assets';
 import type { CollectionEntry } from 'astro:content';
 
 interface Props {
-  photos: CollectionEntry<'photos'>[];
+  miniatures: CollectionEntry<'miniatures'>[];
 }
 
-const { photos } = Astro.props;
+const { miniatures } = Astro.props;
 
 // Load all logo images via import.meta.glob
 const logoFiles = import.meta.glob<{ default: ImageMetadata }>('/src/assets/logos/**/*.png', { eager: true });
@@ -25,101 +25,105 @@ function getLogoSrc(type: string, name: string): string {
 }
 
 // Validate all referenced logos exist at build time
-for (const photo of photos) {
-  getLogoSrc('manufacturers', photo.data.manufacturer);
-  if (photo.data.game) getLogoSrc('games', photo.data.game);
-  if (photo.data.faction) getLogoSrc('factions', photo.data.faction);
+for (const miniature of miniatures) {
+  getLogoSrc('manufacturers', miniature.data.manufacturer);
+  if (miniature.data.game) getLogoSrc('games', miniature.data.game);
+  if (miniature.data.faction) getLogoSrc('factions', miniature.data.faction);
 }
 
-const processedPhotos = await Promise.all(
-  photos.map(async (photo) => {
+const processedMiniatures = await Promise.all(
+  miniatures.map(async (miniature) => {
     // Process first photo as thumbnail
     const thumbnail = await getImage({
-      src: photo.data.photos[0],
+      src: miniature.data.photos[0],
       width: 400,
       format: 'webp',
     });
 
     // Process all photos at full size for lightbox + small thumbs for carousel
     const fullSizePhotos = await Promise.all(
-      photo.data.photos.map((img) =>
+      miniature.data.photos.map((img) =>
         getImage({ src: img, width: 1600, format: 'webp' })
       )
     );
     const thumbPhotos = await Promise.all(
-      photo.data.photos.map((img) =>
+      miniature.data.photos.map((img) =>
         getImage({ src: img, width: 100, format: 'webp' })
       )
     );
 
-    const manufacturerLogo = getLogoSrc('manufacturers', photo.data.manufacturer);
-    const gameLogo = photo.data.game ? getLogoSrc('games', photo.data.game) : null;
-    const factionLogo = photo.data.faction ? getLogoSrc('factions', photo.data.faction) : null;
+    const manufacturerLogo = getLogoSrc('manufacturers', miniature.data.manufacturer);
+    const gameLogo = miniature.data.game ? getLogoSrc('games', miniature.data.game) : null;
+    const factionLogo = miniature.data.faction ? getLogoSrc('factions', miniature.data.faction) : null;
 
     // Build subtitle HTML for lightbox
     let subtitleParts: string[] = [];
 
     subtitleParts.push(
-      `<span class="meta-item meta-tooltip" data-tooltip="${photo.data.manufacturer}"><img src="${manufacturerLogo}" class="meta-logo" alt="${photo.data.manufacturer}" /></span>`
+      `<span class="meta-item meta-tooltip" data-tooltip="${miniature.data.manufacturer}"><img src="${manufacturerLogo}" class="meta-logo" alt="${miniature.data.manufacturer}" /></span>`
     );
 
-    if (photo.data.game) {
+    if (miniature.data.game) {
       subtitleParts.push(
-        `<span class="meta-item meta-tooltip" data-tooltip="${photo.data.game}"><img src="${gameLogo}" class="meta-logo" alt="${photo.data.game}" /></span>`
+        `<span class="meta-item meta-tooltip" data-tooltip="${miniature.data.game}"><img src="${gameLogo}" class="meta-logo" alt="${miniature.data.game}" /></span>`
       );
     }
 
-    if (photo.data.faction) {
+    if (miniature.data.faction) {
       subtitleParts.push(
-        `<span class="meta-item meta-tooltip" data-tooltip="${photo.data.faction}"><img src="${factionLogo}" class="meta-logo" alt="${photo.data.faction}" /></span>`
+        `<span class="meta-item meta-tooltip" data-tooltip="${miniature.data.faction}"><img src="${factionLogo}" class="meta-logo" alt="${miniature.data.faction}" /></span>`
       );
     }
 
-    subtitleParts.push(`<span class="meta-item">${photo.data.scale}</span>`);
-    subtitleParts.push(`<span class="meta-item">${photo.data.year}</span>`);
+    subtitleParts.push(`<span class="meta-item">${miniature.data.scale}</span>`);
+    subtitleParts.push(`<span class="meta-item">${miniature.data.year}</span>`);
 
     const subtitle = `<div class="meta-row">${subtitleParts.join('<span class="meta-sep">·</span>')}</div>`;
 
-    const altParts = [photo.data.title, photo.data.manufacturer];
-    if (photo.data.game) altParts.push(photo.data.game);
-    if (photo.data.faction) altParts.push(photo.data.faction);
+    const altParts = [miniature.data.title, miniature.data.manufacturer];
+    if (miniature.data.game) altParts.push(miniature.data.game);
+    if (miniature.data.faction) altParts.push(miniature.data.faction);
 
     // Build dynamic slides array for lightGallery
     const slides = fullSizePhotos.map((fs, i) => ({
       src: fs.src,
       thumb: thumbPhotos[i].src,
-      subHtml: `<h4>${photo.data.title}</h4>${subtitle}`,
+      subHtml: `<h4>${miniature.data.title}</h4>${subtitle}`,
     }));
 
     return {
-      id: photo.id,
-      title: photo.data.title,
+      id: miniature.id,
+      title: miniature.data.title,
       alt: altParts.join(' — '),
       thumbnail,
-      photoCount: photo.data.photos.length,
+      photoCount: miniature.data.photos.length,
       slides,
+      manufacturer: miniature.data.manufacturer,
+      faction: miniature.data.faction,
     };
   })
 );
 ---
 
-<div id="gallery" class="photo-grid">
-  {processedPhotos.map((photo) => (
+<div id="gallery" class="miniature-grid">
+  {processedMiniatures.map((mini) => (
     <div
-      class="photo-item"
-      data-slides={JSON.stringify(photo.slides)}
+      class="miniature-item"
+      data-slides={JSON.stringify(mini.slides)}
+      data-manufacturer={mini.manufacturer}
+      data-faction={mini.faction ?? ''}
     >
       <img
-        src={photo.thumbnail.src}
-        width={photo.thumbnail.attributes.width}
-        height={photo.thumbnail.attributes.height}
-        alt={photo.alt}
+        src={mini.thumbnail.src}
+        width={mini.thumbnail.attributes.width}
+        height={mini.thumbnail.attributes.height}
+        alt={mini.alt}
         loading="lazy"
         decoding="async"
       />
-      {photo.photoCount > 1 && (
+      {mini.photoCount > 1 && (
         <span class="photo-count-badge">
-          {photo.photoCount}
+          {mini.photoCount}
           <svg class="badge-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="1" y="3" width="10" height="10" rx="1" />
             <path d="M5 3V1.5A.5.5 0 0 1 5.5 1h9a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5H13" />
@@ -128,6 +132,7 @@ const processedPhotos = await Promise.all(
       )}
     </div>
   ))}
+  <p class="no-results">No models match the selected filters.</p>
 </div>
 
 <script>
@@ -142,14 +147,14 @@ const processedPhotos = await Promise.all(
   const galleryElement = document.getElementById('gallery');
   if (galleryElement) {
     galleryElement.addEventListener('click', (e) => {
-      const item = (e.target as HTMLElement).closest('.photo-item');
+      const item = (e.target as HTMLElement).closest('.miniature-item');
       if (!item) return;
 
-      const items = galleryElement.querySelectorAll('.photo-item');
+      const visibleItems = galleryElement.querySelectorAll('.miniature-item:not(.filtered-out):not(.filtering-out)');
       let allSlides: any[] = [];
       let startIndex = 0;
 
-      items.forEach((el) => {
+      visibleItems.forEach((el) => {
         const slides = JSON.parse(el.getAttribute('data-slides') || '[]');
         if (el === item) startIndex = allSlides.length;
         allSlides = allSlides.concat(slides);
@@ -177,28 +182,67 @@ const processedPhotos = await Promise.all(
 </script>
 
 <style>
-  .photo-grid {
+  .miniature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1rem;
   }
 
-  .photo-item {
+  .miniature-item {
     position: relative;
     display: block;
     overflow: hidden;
     border-radius: 4px;
     cursor: pointer;
+    transition: transform 0.3s ease, opacity 0.3s ease;
   }
 
-  .photo-item img {
+  .miniature-item.filtering-out {
+    transform: scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .miniature-item.filtered-out {
+    display: none;
+  }
+
+  .miniature-item.filtering-in {
+    animation: filterIn 0.3s ease forwards;
+  }
+
+  @keyframes filterIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .no-results {
+    display: none;
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+  }
+
+  .no-results.visible {
+    display: block;
+  }
+
+  .miniature-item img {
     width: 100%;
     height: auto;
     display: block;
     transition: transform 0.3s ease;
   }
 
-  .photo-item:hover img {
+  .miniature-item:hover img {
     transform: scale(1.03);
   }
 

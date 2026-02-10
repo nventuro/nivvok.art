@@ -1,14 +1,80 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PhotoGrid from '../components/PhotoGrid.astro';
+import MiniatureGrid from '../components/MiniatureGrid.astro';
+import FilterBar from '../components/FilterBar.astro';
 import { getCollection } from 'astro:content';
 
-const photos = await getCollection('photos');
+const miniatures = await getCollection('miniatures');
+
+// Load logo images for filter chips (same pattern as MiniatureGrid)
+const logoFiles = import.meta.glob<{ default: ImageMetadata }>('/src/assets/logos/**/*.png', { eager: true });
+
+function toKebabCase(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '-');
+}
+
+function getLogoSrc(type: string, name: string): string {
+  const key = `/src/assets/logos/${type}/${toKebabCase(name)}.png`;
+  const match = logoFiles[key];
+  if (!match) return '';
+  return match.default.src;
+}
+
+// Build filter metadata: count by manufacturer and by faction (with parent manufacturer)
+const manufacturerCounts = new Map<string, number>();
+const factionData = new Map<string, { count: number; manufacturer: string }>();
+
+for (const miniature of miniatures) {
+  const m = miniature.data.manufacturer;
+  manufacturerCounts.set(m, (manufacturerCounts.get(m) || 0) + 1);
+
+  if (miniature.data.faction) {
+    const f = miniature.data.faction;
+    const existing = factionData.get(f);
+    if (existing) {
+      existing.count++;
+    } else {
+      factionData.set(f, { count: 1, manufacturer: m });
+    }
+  }
+}
+
+// Build ordered filterGroups: manufacturer chip + its faction chips, grouped
+const filterGroups = Array.from(manufacturerCounts.entries())
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([manufacturer, count]) => {
+    const chips: { type: 'manufacturer' | 'faction'; value: string; manufacturer: string; count: number; logoSrc: string }[] = [];
+
+    chips.push({
+      type: 'manufacturer',
+      value: manufacturer,
+      manufacturer,
+      count,
+      logoSrc: getLogoSrc('manufacturers', manufacturer),
+    });
+
+    // Add faction chips that belong to this manufacturer
+    Array.from(factionData.entries())
+      .filter(([, data]) => data.manufacturer === manufacturer)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([faction, data]) => {
+        chips.push({
+          type: 'faction',
+          value: faction,
+          manufacturer,
+          count: data.count,
+          logoSrc: getLogoSrc('factions', faction),
+        });
+      });
+
+    return { manufacturer, chips };
+  });
 ---
 
 <BaseLayout title="nivvok.art — Painted Miniatures Gallery">
   <h1>Gallery</h1>
-  <PhotoGrid photos={photos} />
+  <FilterBar filterGroups={filterGroups} />
+  <MiniatureGrid miniatures={miniatures} />
 </BaseLayout>
 
 <style>
