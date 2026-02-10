@@ -165,6 +165,12 @@ const processedPhotos = await Promise.all(
         dynamicEl: allSlides,
       });
 
+      // lightGallery delays caption updates until after the slide animation completes - update immediately instead
+      container.addEventListener('lgBeforeSlide', ((e: CustomEvent) => {
+        const subHtml = allSlides[e.detail.index]?.subHtml || '';
+        lg.outer.find('.lg-sub-html').html(subHtml);
+      }) as EventListener);
+
       lg.openGallery(startIndex);
     });
   }
