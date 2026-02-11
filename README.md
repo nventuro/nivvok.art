@@ -24,11 +24,14 @@ The `main` branch contains the Astro source project. GitHub Actions builds it an
 
 ```
 src/
-  pages/          # page templates (landing page, category pages)
-  components/     # reusable components (navbar, photo grid, lightbox wrapper)
-  layouts/        # shared page structure (HTML shell, includes components like navbar)
-  data/           # photo metadata (categories, tags, descriptions)
-  assets/photos/  # photo files (processed by Astro's image pipeline at build time)
+  pages/              # page templates (landing page, category pages)
+  components/         # reusable components (navbar, photo grid, lightbox wrapper)
+  layouts/            # shared page structure (HTML shell, includes components like navbar)
+  content/miniatures/ # miniature metadata (YAML files with title, photos, manufacturer, etc.)
+  assets/photos/      # photo files (processed by Astro's image pipeline at build time)
+  assets/logos/       # manufacturer/game/faction logos
+scripts/
+  admin.mjs           # local admin tool for adding miniatures
 ```
 
 ## Development
@@ -39,6 +42,16 @@ npm run dev       # start dev server at localhost:4321
 npm run build     # build static site to dist/
 npm run preview   # preview the built site locally
 ```
+
+## Admin Tool
+
+A local web-based tool for adding new miniatures with drag-and-drop photo management:
+
+```bash
+npm run admin     # opens at http://localhost:3001
+```
+
+Provides a form for metadata (title, manufacturer, scale, etc.), a drag-and-drop photo zone with crop/rotate support, and saves YAML + photo files directly to the project.
 
 ## License
 

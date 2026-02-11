@@ -22,6 +22,47 @@ function getLogoSrc(type: string, name: string): string {
   return match.default.src;
 }
 
+// Validate logos exist for all manufacturers, games, and factions
+const logoErrors: string[] = [];
+const manufacturers = new Set(miniatures.map(m => m.data.manufacturer));
+const games = new Set(miniatures.map(m => m.data.game).filter(Boolean));
+const factions = new Set(miniatures.map(m => m.data.faction).filter(Boolean));
+
+for (const name of manufacturers) {
+  if (!getLogoSrc('manufacturers', name)) {
+    logoErrors.push(`Missing manufacturer logo: src/assets/logos/manufacturers/${toKebabCase(name)}.png`);
+  }
+}
+for (const name of games) {
+  if (!getLogoSrc('games', name!)) {
+    logoErrors.push(`Missing game logo: src/assets/logos/games/${toKebabCase(name!)}.png`);
+  }
+}
+for (const name of factions) {
+  if (!getLogoSrc('factions', name!)) {
+    logoErrors.push(`Missing faction logo: src/assets/logos/factions/${toKebabCase(name!)}.png`);
+  }
+}
+if (logoErrors.length) {
+  throw new Error('Missing logos:\n  ' + logoErrors.join('\n  '));
+}
+
+// Validate no orphan photos in src/assets/photos/
+const photoFiles = import.meta.glob<{ default: ImageMetadata }>('/src/assets/photos/**/*.png', { eager: true });
+const referencedPhotos = new Set<string>();
+for (const miniature of miniatures) {
+  for (const photo of miniature.data.photos) {
+    referencedPhotos.add(photo.src);
+  }
+}
+const orphanPhotos = Object.keys(photoFiles).filter(key => {
+  const src = photoFiles[key].default.src;
+  return !referencedPhotos.has(src);
+});
+if (orphanPhotos.length) {
+  throw new Error('Orphan photos (not referenced by any miniature):\n  ' + orphanPhotos.join('\n  '));
+}
+
 // Build filter metadata: count by manufacturer and by faction (with parent manufacturer)
 const manufacturerCounts = new Map<string, number>();
 const factionData = new Map<string, { count: number; manufacturer: string }>();
