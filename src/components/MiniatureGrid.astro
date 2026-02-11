@@ -107,6 +107,9 @@ const processedMiniatures = await Promise.all(
 ---
 
 <div id="gallery" class="miniature-grid">
+  <script is:inline>
+    if (window.location.search) document.getElementById('gallery').classList.add('pre-filter');
+  </script>
   {processedMiniatures.map((mini) => (
     <div
       class="miniature-item"
@@ -198,6 +201,10 @@ const processedMiniatures = await Promise.all(
     border-radius: 4px;
     cursor: pointer;
     transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .miniature-grid.pre-filter .miniature-item {
+    display: none;
   }
 
   .miniature-item.filtering-out {

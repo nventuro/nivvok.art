@@ -251,6 +251,20 @@ const { filterGroups } = Astro.props;
     }
   }
 
+  // Skip animations on initial load: promote filtering-out to filtered-out immediately,
+  // and remove filtering-in, so items appear in their final positions with no movement.
+  const gallery = document.getElementById('gallery');
+  if (gallery) {
+    gallery.querySelectorAll('.filtering-out').forEach((el) => {
+      el.classList.remove('filtering-out');
+      el.classList.add('filtered-out');
+    });
+    gallery.querySelectorAll('.filtering-in').forEach((el) => {
+      el.classList.remove('filtering-in');
+    });
+    gallery.classList.remove('pre-filter');
+  }
+
   // Back/forward navigation
   window.addEventListener('popstate', () => {
     const p = new URLSearchParams(window.location.search);
