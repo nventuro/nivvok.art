@@ -194,6 +194,13 @@ const processedMiniatures = await Promise.all(
     gap: 1rem;
   }
 
+  @media (max-width: 768px) {
+    .miniature-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+  }
+
   .miniature-item {
     position: relative;
     display: block;
