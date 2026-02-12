@@ -466,6 +466,8 @@ const { filterGroups } = Astro.props;
     }
 
     .filter-chips {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.3s ease;
@@ -475,11 +477,13 @@ const { filterGroups } = Astro.props;
       max-height: 500px;
     }
 
-    .filter-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    .filter-clear {
+      grid-column: 1 / -1;
+    }
+
+    .chip-logo {
       width: 100%;
+      height: auto;
     }
   }
 </style>
